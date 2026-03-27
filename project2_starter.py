@@ -41,7 +41,25 @@ def load_listing_results(html_path) -> list[tuple]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    results = []
+
+    with open(html_path, "r", encoding="utf-8-sig") as f:
+        soup = BeautifulSoup(f.read(), "html.parser")
+
+    for a in soup.find_all("a", href=True):
+        href = a.get("href")
+        match = re.search(r"listing_(\d+)\.html", href)
+
+        if match:
+            listing_id = match.group(1)
+
+            span = a.find("span")
+            if span:
+                title = span.get_text(strip=True)
+                results.append((title, listing_id))
+
+    return results
+    
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -70,7 +88,65 @@ def get_listing_details(listing_id) -> dict:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    file_path = os.path.join(base_dir, "html_files", f"listing_{listing_id}.html")
+
+    with open(file_path, "r", encoding="utf-8-sig") as f:
+        soup = BeautifulSoup(f.read(), "html.parser")
+
+    policy_span = soup.find("span", class_="ll4r2nl")
+    if policy_span:
+        raw = policy_span.get_text(strip=True)
+        if "STR" in raw:
+            policy_number = raw
+        elif "exempt" in raw.lower():
+            policy_number = "Exempt"
+        else:
+            policy_number = "Pending"
+    else:
+        policy_number = "Pending"
+
+    superhost_tag = soup.find("span", class_="_1mhorg9")
+    if superhost_tag:
+        host_type = "Superhost"
+    else:
+        host_type = "regular"
+
+    h2 = soup.find("h2", class_="_14i3z6h")
+    host_name = ""
+    room_type = "Entire Room"
+
+    if h2:
+        text = h2.get_text(" ", strip=True)
+
+        match = re.search(r"hosted by (.+)", text, re.IGNORECASE)
+        if match:
+            host_name = match.group(1)
+
+        if "Private" in text:
+            room_type = "Private Room"
+        elif "Shared" in text:
+            room_type = "Shared Room"
+
+    rating_div = soup.find("div", class_="_7pay")
+    location_rating = 0.0
+
+    if rating_div:
+        aria = rating_div.get("aria-label")
+        if aria:
+            match = re.search(r"(\d+\.\d+)", aria)
+            if match:
+                location_rating = float(match.group(1))
+
+    return {
+        listing_id: {
+            "policy_number": policy_number,
+            "host_type": host_type,
+            "host_name": host_name,
+            "room_type": room_type,
+            "location_rating": location_rating
+        }
+    }
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
