@@ -94,13 +94,21 @@ def get_listing_details(listing_id) -> dict:
     strings = list(soup.stripped_strings)
 
     policy_number = "Pending"
-    policy_match = re.search(r"STR[-\s]?\d+", page_text, re.IGNORECASE)
-    if policy_match:
-        policy_number = policy_match.group(0).replace(" ", "-")
-    elif "exempt" in page_text.lower():
-        policy_number = "Exempt"
-    elif "pending" in page_text.lower():
-        policy_number = "Pending"
+    policy_section = soup.find(string=re.compile(r"policy number", re.IGNORECASE))
+    if policy_section:
+        policy_parent = policy_section.parent
+        policy_span = policy_parent.find_next("span", class_="ll4r2nl")
+
+        if policy_span:
+            raw_policy = policy_span.get_text(strip=True)
+
+            if "exempt" in raw_policy.lower():
+                policy_number = "Exempt"
+            elif "pending" in raw_policy.lower():
+                policy_number = "Pending"
+            else:
+                policy_number = raw_policy
+    
 
     superhost_tag = soup.find("span", string=re.compile(r"Superhost", re.IGNORECASE))
     if superhost_tag:
@@ -248,13 +256,13 @@ def avg_location_rating_by_room_type(data) -> dict:
         if room_type not in ratings:
             ratings[room_type] = []
 
-        ratings=[room_type].append(location_rating)
+        ratings[room_type].append(location_rating)
 
     averages = {}
 
     for room_type in ratings:
-        ratings = ratings[room_type]
-        averages[room_type] = sum(ratings) / len(ratings)
+        room_type_ratings = ratings[room_type]
+        averages[room_type] = sum(room_type_ratings) / len(room_type_ratings)
 
     return averages
     # ==============================
@@ -286,7 +294,7 @@ def validate_policy_numbers(data) -> list[str]:
         if policy in ["Pending", "Exempt"]:
             continue
 
-        if not re.fullmatch(r"STR-\d{7}", policy):
+        if not re.fullmatch(r"(20\d{2}-00\d{4}STR|STR-000\d{4})", policy):
             invalid.append(listing_id)
 
     return invalid
@@ -400,10 +408,10 @@ class TestCases(unittest.TestCase):
         os.remove(out_path)
         # TODO: Check that the first data row matches ["Guesthouse in San Francisco", "49591060", "STR-0000253", "Superhost", "Ingrid", "Entire Room", "5.0"].
         
+        
     
     def test_avg_location_rating_by_room_type(self):
         # TODO: Call avg_location_rating_by_room_type() and save the output.
-        invalid_listings = validate_policy_numbers(self.detailed_data)
         # TODO: Check that the average for "Private Room" is 4.9.
         averages = avg_location_rating_by_room_type(self.detailed_data)
         self.assertEqual(averages["Private Room"], 4.9)
