@@ -26,7 +26,6 @@ If you are getting "encoding errors" while trying to open, read, or write from a
     encoding="utf-8-sig"
 """
 
-
 def load_listing_results(html_path) -> list[tuple]:
     """
     Load file data from html_path and parse through it to find listing titles and listing ids.
@@ -46,24 +45,21 @@ def load_listing_results(html_path) -> list[tuple]:
     with open(html_path, "r", encoding="utf-8-sig") as f:
         soup = BeautifulSoup(f.read(), "html.parser")
 
-    for a in soup.find_all("a", href=True):
-        href = a.get("href")
-        match = re.search(r"listing_(\d+)\.html", href)
+    title_divs = soup.find_all("div", attrs={"data-testid": "listing-card-title"})
 
-        if match:
+    for div in title_divs:
+        title = div.get_text(" ", strip=True)
+        div_id = div.get("id", "")
+        match = re.search(r"title_(\d+)", div_id)
+
+        if match and title:
             listing_id = match.group(1)
-
-            span = a.find("span")
-            if span:
-                title = span.get_text(strip=True)
-                results.append((title, listing_id))
+            results.append((title, listing_id))
 
     return results
-    
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
-
 
 def get_listing_details(listing_id) -> dict:
     """
@@ -87,56 +83,56 @@ def get_listing_details(listing_id) -> dict:
     # TODO: Implement checkout logic following the instructions
     # ==============================
     # YOUR CODE STARTS HERE
-    # ==============================
     base_dir = os.path.abspath(os.path.dirname(__file__))
     file_path = os.path.join(base_dir, "html_files", f"listing_{listing_id}.html")
 
     with open(file_path, "r", encoding="utf-8-sig") as f:
         soup = BeautifulSoup(f.read(), "html.parser")
 
-    policy_span = soup.find("span", class_="ll4r2nl")
-    if policy_span:
-        raw = policy_span.get_text(strip=True)
-        if "STR" in raw:
-            policy_number = raw
-        elif "exempt" in raw.lower():
-            policy_number = "Exempt"
-        else:
-            policy_number = "Pending"
-    else:
+    page_text = soup.get_text(" ", strip=True)
+    strings = list(soup.stripped_strings)
+
+    policy_number = "Pending"
+    policy_match = re.search(r"STR[-\s]?\d+", page_text, re.IGNORECASE)
+    if policy_match:
+        policy_number = policy_match.group(0).replace(" ", "-")
+    elif "exempt" in page_text.lower():
+        policy_number = "Exempt"
+    elif "pending" in page_text.lower():
         policy_number = "Pending"
 
-    superhost_tag = soup.find("span", class_="_1mhorg9")
+    superhost_tag = soup.find("span", string=re.compile(r"Superhost", re.IGNORECASE))
     if superhost_tag:
         host_type = "Superhost"
     else:
         host_type = "regular"
 
-    h2 = soup.find("h2", class_="_14i3z6h")
     host_name = ""
     room_type = "Entire Room"
 
-    if h2:
-        text = h2.get_text(" ", strip=True)
+    for text in strings:
+        if "hosted by" in text.lower():
+            host_match = re.search(r"hosted by\s+(.+)", text, re.IGNORECASE)
+            if host_match:
+                host_name = host_match.group(1).strip()
 
-        match = re.search(r"hosted by (.+)", text, re.IGNORECASE)
-        if match:
-            host_name = match.group(1)
+            if "private" in text.lower():
+                room_type = "Private Room"
+            elif "shared" in text.lower():
+                room_type = "Shared Room"
+            else:
+                room_type = "Entire Room"
+            break
 
-        if "Private" in text:
-            room_type = "Private Room"
-        elif "Shared" in text:
-            room_type = "Shared Room"
-
-    rating_div = soup.find("div", class_="_7pay")
     location_rating = 0.0
+    location_div = soup.find("div", class_="_y1ba89", string=re.compile(r"Location", re.IGNORECASE))
 
-    if rating_div:
-        aria = rating_div.get("aria-label")
-        if aria:
-            match = re.search(r"(\d+\.\d+)", aria)
-            if match:
-                location_rating = float(match.group(1))
+    if location_div:
+        rating_span = location_div.find_next("span", class_="_4oybiu")
+        if rating_span:
+            rating_text = rating_span.get_text(strip=True)
+            if re.fullmatch(r"\d+\.\d+", rating_text):
+                location_rating = float(rating_text)
 
     return {
         listing_id: {
@@ -150,7 +146,6 @@ def get_listing_details(listing_id) -> dict:
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
-
 
 def create_listing_database(html_path) -> list[tuple]:
     """
@@ -167,12 +162,27 @@ def create_listing_database(html_path) -> list[tuple]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    results = []
+
+    listings = load_listing_results(html_path)
+
+    for title, listing_id in listings:
+        details = get_listing_details(listing_id)[listing_id]
+
+        results.append((
+            title,
+            listing_id,
+            details["policy_number"],
+            details["host_type"],
+            details["host_name"],
+            details["room_type"],
+            details["location_rating"]
+        ))
+
+    return results
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
-
-
 def output_csv(data, filename) -> None:
     """
     Write data to a CSV file with the provided filename.
@@ -190,7 +200,19 @@ def output_csv(data, filename) -> None:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    sorted_data = sorted(data, key=lambda row: row[6], reverse=True)
+    with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "listing_title",
+            "listing_id",
+            "policy_number",
+            "host_type",
+            "host_name",
+            "room_type",
+            "location_rating"
+    ])
+        writer.writerows(sorted_data)  
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -213,7 +235,27 @@ def avg_location_rating_by_room_type(data) -> dict:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    ratings = {}
+
+    for row in data:
+        room_type = row[5]
+        location_rating = row[6]
+
+        if location_rating == 0.0:
+            continue
+
+        if room_type not in ratings:
+            ratings[room_type] = []
+
+        ratings=[room_type].append(location_rating)
+
+    averages = {}
+
+    for room_type in ratings:
+        ratings = ratings[room_type]
+        averages[room_type] = sum(ratings) / len(ratings)
+
+    return averages
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
@@ -234,7 +276,19 @@ def validate_policy_numbers(data) -> list[str]:
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    invalid = []
+
+    for row in data:
+        listing_id = row[1]
+        policy = row[2]
+
+        if policy in ["Pending", "Exempt"]:
+            continue
+
+        if not re.fullmatch(r"STR-\d+", policy):
+            invalid.append(listing_id)
+
+    return invalid
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
