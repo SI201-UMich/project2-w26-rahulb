@@ -1,0 +1,22 @@
+I don’t think the current system provides enough accountability for
+short-term rentals in San Francisco. It depends too much on hosts to
+report accurate information and on others to notice and report issues.
+This makes enforcement reactive instead of proactive, which allows
+noncompliance to slip through. A better approach would be for Airbnb to
+verify policy numbers directly with the city before allowing listings to
+go live, which would reduce reliance on complaints and improve
+accountability.
+
+One important factor in the legality of web scraping is whether the data
+is truly public and how it is accessed. There is a clear difference
+between collecting information from openly accessible webpages and
+bypassing restrictions like logins or security measures. This matters
+because scraping should not involve violating privacy or platform
+protections, even if the data seems available.
+
+Two important guidelines for web scraping are having a clear purpose and
+minimizing harm. Scraping should be done for legitimate reasons like
+research or accountability, not for exploiting users. It should also
+limit the amount of data collected and avoid exposing sensitive personal
+information. Even public data should be handled carefully to avoid
+negative consequences.
