@@ -1,14 +1,15 @@
 # SI 201 HW4 (Library Checkout System)
-# Your name:
-# Your student id:
-# Your email:
-# Who or what you worked with on this homework (including generative AI like ChatGPT):
+# Your name: Rahul Boaz
+# Your student id: 19833614
+# Your email: rboaz@umich.edu
+# Who or what you worked with on this homework (including generative AI like ChatGPT): ChatGPT
 # If you worked with generative AI also add a statement for how you used it.
 # e.g.:
 # Asked ChatGPT for hints on debugging and for suggestions on overall code structure
-#
+# I used AI to help refine my functions so they were more precise and concise, and to debug issues when my code was not working 
+# as expected. I also used it to better understand how to use BeautifulSoup to parse HTML files and how to apply regular expressions to extract specific information.
 # Did your use of GenAI on this assignment align with your goals and guidelines in your Gen AI contract? If not, why?
-#
+# Yes I did.
 # --- ARGUMENTS & EXPECTED RETURN VALUES PROVIDED --- #
 # --- SEE INSTRUCTIONS FOR FULL DETAILS ON METHOD IMPLEMENTATION --- #
 
@@ -308,11 +309,31 @@ def google_scholar_searcher(query):
     # ==============================
     # YOUR CODE STARTS HERE
     # ==============================
-    pass
+    url = "https://scholar.google.com/scholar"
+    params = {"q": query}
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    titles = []
+
+    results = soup.find_all("h3", class_="gs_rt")
+
+    for result in results:
+        a_tag = result.find("a")
+        if a_tag:
+            titles.append(a_tag.get_text(" ", strip=True))
+        else:
+            titles.append(result.get_text(" ", strip=True))
+
+    return titles
     # ==============================
     # YOUR CODE ENDS HERE
     # ==============================
-
 
 class TestCases(unittest.TestCase):
     def setUp(self):
